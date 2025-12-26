@@ -210,16 +210,24 @@ public class FrameUtama extends JFrame {
     public void gantiPanel(String key) {
         cardLayout.show(panelKonten, key);
 
+        // Otomatis tutup menu jika di mode mobile
         if (getWidth() < 900) {
             isMenuShow = false;
             refreshLayout();
         }
 
+        // Refresh data setiap kali panel dibuka agar data selalu up-to-date dari API
         switch (key) {
-            case "dashboard" -> pDashboard.refreshData();
-            case "produk" -> pProduk.refresh();
-            case "pesanan" -> pPesanan.loadData("");
-            case "add_pesanan" -> pAddPesanan.loadKostumCombo();
+            case "dashboard" -> pDashboard.refreshData(); // Pastikan Dashboard juga pakai Worker nanti
+            case "produk"    -> pProduk.refresh();
+            case "pesanan"   -> pPesanan.loadData("");
+            
+            // Panggil method muat data yang sudah kita buat di PanelAddPesanan tadi
+            case "add_pesanan" -> {
+                pAddPesanan.loadPelangganCombo();
+                pAddPesanan.loadKostumCombo();
+            }
+            
             case "pelanggan" -> pPelanggan.loadData();
         }
     }

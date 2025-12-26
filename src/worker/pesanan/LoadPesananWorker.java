@@ -3,10 +3,11 @@ package worker.pesanan;
 import javax.swing.*;
 import java.util.List;
 import model.Pesanan;
-import service.PesananService;
+import api.PesananApiClient; // Pakai API Client baru
 
 public class LoadPesananWorker extends SwingWorker<List<Pesanan>, Void> {
-    private PesananService service = new PesananService();
+    // Ganti Service dengan ApiClient
+    private PesananApiClient apiClient = new PesananApiClient();
     private String keyword;
     private java.util.function.Consumer<List<Pesanan>> callback;
 
@@ -17,14 +18,17 @@ public class LoadPesananWorker extends SwingWorker<List<Pesanan>, Void> {
 
     @Override
     protected List<Pesanan> doInBackground() throws Exception {
-        return service.muatSemuaData(keyword); 
+        // Sekarang memanggil data dari URL PHP melalui ApiClient
+        return apiClient.findAll(keyword); 
     }
 
     @Override
     protected void done() {
         try {
+            // Mengirimkan hasil List<Pesanan> ke UI melalui callback
             callback.accept(get()); 
         } catch (Exception e) {
+            System.err.println("Gagal memuat data pesanan: " + e.getMessage());
             e.printStackTrace();
         }
     }

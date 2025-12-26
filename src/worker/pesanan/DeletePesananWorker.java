@@ -1,15 +1,14 @@
 package worker.pesanan;
 
 import javax.swing.SwingWorker;
-import service.PesananService;
+import api.PesananApiClient; // Pakai API Client, bukan Service
 
 public class DeletePesananWorker extends SwingWorker<Boolean, Void> {
-    // Ubah dari int ke String agar cocok dengan ID Sewa di DB
     private String id; 
-    private PesananService service = new PesananService();
+    // Ganti Service menjadi ApiClient
+    private PesananApiClient apiClient = new PesananApiClient();
     private java.util.function.Consumer<Boolean> callback;
 
-    // Sesuaikan parameter constructor menjadi String
     public DeletePesananWorker(String id, java.util.function.Consumer<Boolean> callback) {
         this.id = id;
         this.callback = callback;
@@ -17,17 +16,18 @@ public class DeletePesananWorker extends SwingWorker<Boolean, Void> {
 
     @Override
     protected Boolean doInBackground() throws Exception {
-        // Karena service.hapusPesanan sekarang menerima String/int yang sesuai
-        // Pastikan service-mu juga menerima tipe yang benar
-        return service.hapusPesanan(id);
+        // Panggil method delete di ApiClient yang nembak ke PHP
+        apiClient.delete(id);
+        return true; // Jika tidak ada exception, berarti sukses
     }
 
     @Override
     protected void done() {
         try {
+            // get() akan melemparkan exception jika doInBackground bermasalah
             callback.accept(get());
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error saat hapus data via API: " + e.getMessage());
             callback.accept(false);
         }
     }

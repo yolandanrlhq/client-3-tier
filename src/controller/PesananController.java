@@ -1,58 +1,101 @@
 package controller;
 
-import java.util.List;
+import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import model.Pesanan;
-import service.PesananService;
 import view.konten.PanelPesanan;
-import worker.pesanan.*; // Pastikan worker sudah ada di package ini
+import worker.pesanan.*; 
+import worker.kostum.LoadKostumWorker; 
+import worker.pelanggan.LoadPelangganWorker; // Pastikan worker ini ada
 
+/**
+ * PesananController (Client-Tier)
+ * Menangani logika interaksi antara UI dan API melalui Worker.
+ */
 public class PesananController {
     
     private PanelPesanan view;
-    private PesananService service;
 
     public PesananController(PanelPesanan view) {
         this.view = view;
-        this.service = new PesananService();
     }
 
-    // Method ini wajib ada karena dipanggil di PanelPesanan baris 140
-    public PesananService getService() {
-        return this.service;
-    }
+    /**
+     * Mengisi JComboBox Kostum via API.
+     * Format item: "ID - Nama - Harga" agar PanelAddPesanan bisa hitung total otomatis.
+     */
+    public void isiComboKostum(JComboBox<String> combo, String namaLama) {
+        new LoadKostumWorker(listKostum -> {
+            combo.removeAllItems();
+            combo.addItem("-- Pilih Kostum --");
+            
+            // Jika dalam mode edit, masukkan nilai lama di awal
+            if (namaLama != null && !namaLama.isEmpty()) {
+                combo.addItem(namaLama);
+            }
 
-    // Mengambil data dari database (Background Thread)
-    public void muatData(String keyword) {
-        new LoadPesananWorker(keyword, listPesanan -> {
-            view.updateTabel(listPesanan);
-        }).execute();
-    }
-
-    // Update data (Background Thread)
-    public void ubahData(Pesanan p) {
-        new UpdatePesananWorker(p, sukses -> {
-            if (sukses) {
-                JOptionPane.showMessageDialog(view, "Data berhasil diperbarui!");
-                muatData(""); // Refresh tabel
-            } else {
-                JOptionPane.showMessageDialog(view, "Gagal memperbarui data.");
+            for (var k : listKostum) {
+                // Tambahkan harga ke dalam string agar UI bisa parsing harga
+                String item = k.getId() + " - " + k.getNama() + " - Rp" + (int)k.getHarga();
+                if (!k.getNama().equals(namaLama)) {
+                    combo.addItem(item);
+                }
             }
         }).execute();
     }
 
-    // Hapus data berdasarkan ID String (Background Thread)
+    /**
+     * Mengisi JComboBox Pelanggan via API.
+     */
+    public void isiComboPelanggan(JComboBox<String> combo) {
+        new LoadPelangganWorker(listPelanggan -> {
+            combo.removeAllItems();
+            combo.addItem("-- Pilih Pelanggan --");
+            for (var p : listPelanggan) {
+                combo.addItem(p.getNama());
+            }
+        }).execute();
+    }
+
+    /**
+     * Memuat data pesanan ke tabel.
+     */
+    public void muatData(String keyword) {
+        new LoadPesananWorker(keyword, listPesanan -> {
+            if (view != null) {
+                view.updateTabel(listPesanan);
+            }
+        }).execute();
+    }
+
+    /**
+     * Memperbarui data pesanan yang sudah ada.
+     */
+    public void ubahData(Pesanan p) {
+        new UpdatePesananWorker(p, sukses -> {
+            if (sukses) {
+                JOptionPane.showMessageDialog(view, "Data berhasil diperbarui!");
+                muatData(""); 
+            } else {
+                JOptionPane.showMessageDialog(view, "Gagal memperbarui data melalui server.");
+            }
+        }).execute();
+    }
+
+    /**
+     * Menghapus data transaksi.
+     */
     public void hapusDataString(String id) {
         int confirm = JOptionPane.showConfirmDialog(view, 
-            "Hapus transaksi " + id + "?\nStok kostum akan dikembalikan otomatis.", 
+            "Hapus transaksi " + id + "?\nStok kostum akan dikelola otomatis oleh server.", 
             "Konfirmasi Hapus", 
             JOptionPane.YES_NO_OPTION);
             
         if (confirm == JOptionPane.YES_OPTION) {
             new DeletePesananWorker(id, sukses -> {
                 if (sukses) {
-                    JOptionPane.showMessageDialog(view, "Data dihapus!");
-                    muatData(""); // Refresh tabel
+                    JOptionPane.showMessageDialog(view, "Data dihapus dari server!");
+                    muatData(""); 
                 } else {
                     JOptionPane.showMessageDialog(view, "Gagal menghapus data.");
                 }
@@ -60,34 +103,17 @@ public class PesananController {
         }
     }
 
-    // === PesananController.java (FIX FINAL fungsi simpanData) ===
+    /**
+     * Menyimpan transaksi penyewaan baru.
+     */
     public void simpanData(Pesanan p, Runnable callback) {
-
-        // JANGAN tampilkan alert di awal
         new SavePesananWorker(p, sukses -> {
-
-            // ALERT MUNCUL SETELAH PROSES DB SELESAI
             if (sukses) {
-                JOptionPane.showMessageDialog(
-                    null,
-                    "Transaksi Berhasil Disimpan!",
-                    "Sukses",
-                    JOptionPane.INFORMATION_MESSAGE
-                );
+                JOptionPane.showMessageDialog(null, "Transaksi Berhasil Disimpan di Server!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                if (callback != null) callback.run();
             } else {
-                JOptionPane.showMessageDialog(
-                    null,
-                    "Gagal menyimpan transaksi.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-                );
+                JOptionPane.showMessageDialog(null, "Gagal mengirim data ke server.", "Error", JOptionPane.ERROR_MESSAGE);
             }
-
-            // CALLBACK (tutup loading, reset form, pindah panel)
-            if (callback != null) {
-                callback.run();
-            }
-
         }).execute();
     }
 }

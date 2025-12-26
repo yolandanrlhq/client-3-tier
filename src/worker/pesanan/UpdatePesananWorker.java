@@ -2,11 +2,11 @@ package worker.pesanan;
 
 import javax.swing.SwingWorker;
 import model.Pesanan;
-import service.PesananService;
+import api.PesananApiClient; // Pakai API Client
 
 public class UpdatePesananWorker extends SwingWorker<Boolean, Void> {
     private Pesanan pesanan;
-    private PesananService service = new PesananService();
+    private PesananApiClient apiClient = new PesananApiClient();
     private java.util.function.Consumer<Boolean> callback;
 
     public UpdatePesananWorker(Pesanan pesanan, java.util.function.Consumer<Boolean> callback) {
@@ -16,7 +16,9 @@ public class UpdatePesananWorker extends SwingWorker<Boolean, Void> {
 
     @Override
     protected Boolean doInBackground() throws Exception {
-        return service.ubahPesanan(pesanan);
+        // Panggil method update yang baru kita buat di ApiClient
+        apiClient.update(pesanan);
+        return true;
     }
 
     @Override
@@ -24,7 +26,7 @@ public class UpdatePesananWorker extends SwingWorker<Boolean, Void> {
         try {
             callback.accept(get());
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Gagal update data via API: " + e.getMessage());
             callback.accept(false);
         }
     }

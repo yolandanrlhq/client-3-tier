@@ -2,11 +2,12 @@ package worker.pesanan;
 
 import javax.swing.SwingWorker;
 import model.Pesanan;
-import service.PesananService;
+import api.PesananApiClient; // Ganti ke API Client
 
 public class SavePesananWorker extends SwingWorker<Boolean, Void> {
     private Pesanan pesanan;
-    private PesananService service = new PesananService();
+    // Gunakan ApiClient sebagai pengganti Service
+    private PesananApiClient apiClient = new PesananApiClient();
     private java.util.function.Consumer<Boolean> callback;
 
     public SavePesananWorker(Pesanan pesanan, java.util.function.Consumer<Boolean> callback) {
@@ -16,7 +17,9 @@ public class SavePesananWorker extends SwingWorker<Boolean, Void> {
 
     @Override
     protected Boolean doInBackground() throws Exception {
-        return service.simpanPesanan(pesanan);
+        // Mengirim data pesanan ke PHP (App-Tier)
+        apiClient.create(pesanan);
+        return true; 
     }
 
     @Override
@@ -24,7 +27,7 @@ public class SavePesananWorker extends SwingWorker<Boolean, Void> {
         try {
             callback.accept(get());
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Gagal menyimpan ke server: " + e.getMessage());
             callback.accept(false);
         }
     }

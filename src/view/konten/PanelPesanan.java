@@ -2,13 +2,10 @@ package view.konten;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.*;
 
-import config.DBConfig;
 import net.miginfocom.swing.MigLayout;
 import model.Pesanan;
 import controller.PesananController;
@@ -125,7 +122,6 @@ public class PanelPesanan extends JPanel {
             String penyewaLama = model.getValueAt(row, 1).toString();
             String namaKostumLama = model.getValueAt(row, 2).toString();
             
-            // Fix: Bersihkan angka dari koma/titik sebelum parse
             String jmlRaw = model.getValueAt(row, 3).toString().replaceAll("[^0-9]", "");
             int jumlahLama = Integer.parseInt(jmlRaw);
             String statusLama = model.getValueAt(row, 6).toString();
@@ -136,23 +132,17 @@ public class PanelPesanan extends JPanel {
             JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Disewa", "Selesai", "Dibatalkan"});
             cbStatus.setSelectedItem(statusLama);
 
+            // LOGIKA 3-TIER: Ambil list kostum via Controller (bukan SQL)
             JComboBox<String> cbKostum = new JComboBox<>();
             cbKostum.addItem(namaKostumLama); 
 
-            // Isi ComboBox Kostum dari DB
-            try (Connection conn = DBConfig.getConnection()) {
-                ResultSet resK = conn.createStatement().executeQuery("SELECT id_kostum, nama_kostum FROM kostum WHERE stok > 0");
-                while (resK.next()) {
-                    String item = resK.getString("id_kostum") + " - " + resK.getString("nama_kostum");
-                    if (!resK.getString("nama_kostum").equals(namaKostumLama)) {
-                        cbKostum.addItem(item);
-                    }
-                }
-            }
+            // Di sini kita panggil controller untuk mengisi dropdown
+            // Controller nanti akan memanggil KostumApiClient
+            controller.isiComboKostum(cbKostum, namaKostumLama);
 
             // 3. Tampilkan Dialog
             JPanel form = new JPanel(new MigLayout("fillx, insets 10", "[right]10[grow, fill]"));
-            form.add(new JLabel("Penyewa:"));    form.add(txtPenyewa, "wrap");
+            form.add(new JLabel("Penyewa:"));     form.add(txtPenyewa, "wrap");
             form.add(new JLabel("Ganti Kostum:")); form.add(cbKostum, "wrap");
             form.add(new JLabel("Jumlah Unit:"));  form.add(txtJumlah, "wrap");
             form.add(new JLabel("Status:"));       form.add(cbStatus, "wrap");
@@ -168,33 +158,27 @@ public class PanelPesanan extends JPanel {
                 
                 String selectedK = cbKostum.getSelectedItem().toString();
                 
-                // FIX LOGIKA ID KOSTUM:
+                // Jika user pilih kostum baru "ID - NAMA"
                 if (selectedK.contains(" - ")) {
-                    // Jika user pilih kostum baru dari list
                     p.setIdKostum(selectedK.split(" - ")[0].trim());
                 } else {
-                    // Jika user tidak ganti kostum, ambil ID aslinya via Service agar tidak NULL
-                    String idLama = controller.getService().getIdKostum(idSewa);
-                    p.setIdKostum(idLama);
+                    // Jika tetap kostum lama, ID dikelola di sisi PHP (Server-side)
+                    p.setIdKostum(null); 
                 }
                 
-                // Hitung ulang total biaya (opsional, tergantung logic bisnis anda)
-                // Jika harga per hari berubah, p.setTotalBiaya(...) bisa ditambahkan di sini.
-
                 controller.ubahData(p);
             }
         } catch (Exception e) {
-            e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Gagal memproses data: " + e.getMessage());
         }
     }
 
+    // --- Helper UI tetap di sini ---
     private void applyTableResponsiveness() {
         Window window = SwingUtilities.getWindowAncestor(this);
         if (window == null) return;
         int w = window.getWidth();
         TableColumnModel tcm = table.getColumnModel();
-
         if (w <= 768) {
             hideColumn(tcm, 3); hideColumn(tcm, 4); hideColumn(tcm, 5);
         } else {
@@ -203,14 +187,9 @@ public class PanelPesanan extends JPanel {
         this.revalidate();
     }
 
-    private void setColumnWidth(TableColumnModel tcm, int index, int width) {
-        tcm.getColumn(index).setMinWidth(width);
-        tcm.getColumn(index).setMaxWidth(width == 0 ? 0 : 1000);
-        tcm.getColumn(index).setPreferredWidth(width);
-    }
-
     private void hideColumn(TableColumnModel tcm, int index) {
-        setColumnWidth(tcm, index, 0);
+        tcm.getColumn(index).setMinWidth(0);
+        tcm.getColumn(index).setMaxWidth(0);
     }
 
     private void showColumn(TableColumnModel tcm, int index, int width) {
@@ -223,18 +202,11 @@ public class PanelPesanan extends JPanel {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            
-            // Cek status untuk styling warna baris
             String status = table.getValueAt(row, 6).toString();
-            
-            if (isSelected) {
-                setBackground(new Color(200, 220, 255));
-            } else {
-                if ("Selesai".equalsIgnoreCase(status)) {
-                    setBackground(new Color(240, 240, 240)); // Abu-abu jika selesai
-                } else {
-                    setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 248, 250));
-                }
+            if (isSelected) { setBackground(new Color(200, 220, 255)); }
+            else {
+                if ("Selesai".equalsIgnoreCase(status)) setBackground(new Color(240, 240, 240));
+                else setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 248, 250));
             }
             return this;
         }
@@ -245,8 +217,6 @@ public class PanelPesanan extends JPanel {
             setText("Aksi");
             setBackground(new Color(108, 155, 244));
             setForeground(Color.WHITE);
-            setFocusPainted(false);
-            setFont(new Font("Inter", Font.BOLD, 12));
         }
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {

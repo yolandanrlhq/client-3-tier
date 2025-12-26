@@ -2,11 +2,10 @@ package view.konten;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.sql.*;
+import java.util.Date;
 import javax.swing.*;
 import net.miginfocom.swing.MigLayout;
 import view.FrameUtama;
-import config.DBConfig;
 import model.Pesanan;
 import controller.PesananController;
 
@@ -18,7 +17,8 @@ public class PanelAddPesanan extends JPanel {
     private JButton btnSimpan;
     private double hargaPerUnit = 0;
 
-    private PesananController controller = new PesananController(null);
+    // View memanggil Controller, Controller memanggil Worker
+    private PesananController controller;
     private FrameUtama frameUtama;
 
     private MigLayout mainLayout;
@@ -26,14 +26,16 @@ public class PanelAddPesanan extends JPanel {
 
     public PanelAddPesanan(FrameUtama frame) {
         this.frameUtama = frame;
+        this.controller = new PesananController(null); // View di set null karena ini panel input
 
         mainLayout = new MigLayout("fillx, insets 40", "[right]20[grow, fill]");
         setLayout(mainLayout);
         setBackground(Color.WHITE);
 
         setupStaticComponents();
-        loadKostumCombo();
-        loadPelangganCombo();
+        
+        // Memuat data melalui Controller (API-based)
+        loadDataFromServer();
 
         addComponentListener(new ComponentAdapter() {
             @Override
@@ -50,7 +52,9 @@ public class PanelAddPesanan extends JPanel {
         txtIDSewa = new JTextField();
         cbPenyewa = new JComboBox<>();
         cbKostum = new JComboBox<>();
-        cbKostum.addActionListener(e -> ambilHargaKostum());
+        
+        // Listener untuk update harga saat pilih kostum
+        cbKostum.addActionListener(e -> updateHargaOtomatis());
 
         txtJumlah = new JSpinner(new SpinnerNumberModel(1, 1, 100, 1));
         txtJumlah.addChangeListener(e -> hitungTotal());
@@ -65,151 +69,72 @@ public class PanelAddPesanan extends JPanel {
         btnSimpan.setBackground(new Color(76, 175, 80));
         btnSimpan.setForeground(Color.WHITE);
         btnSimpan.setFont(new Font("Inter", Font.BOLD, 14));
-        btnSimpan.addActionListener(e -> simpanPesananAsync());
+        btnSimpan.addActionListener(e -> aksiSimpan());
     }
 
-    private void simpanPesananAsync() {
-
-        if (cbKostum.getSelectedIndex() <= 0 ||
-            cbPenyewa.getSelectedIndex() <= 0 ||
-            txtIDSewa.getText().trim().isEmpty()) {
-
-            JOptionPane.showMessageDialog(this, "Mohon lengkapi data!");
-            return;
-        }
-
-        Pesanan p = new Pesanan();
-        p.setIdSewa(txtIDSewa.getText().trim());
-        p.setNamaPenyewa(cbPenyewa.getSelectedItem().toString());
-
-        String[] kostum = cbKostum.getSelectedItem().toString().split(" - ");
-        p.setIdKostum(kostum[0]);
-        p.setNamaKostum(kostum[1]);
-
-        p.setJumlah((int) txtJumlah.getValue());
-        p.setTglPinjam(new java.util.Date());
-        p.setTotalBiaya(Double.parseDouble(txtTotal.getText()));
-        p.setStatus("Disewa");
-
-        JProgressBar progressBar = new JProgressBar(0, 100);
-        progressBar.setStringPainted(true);
-
-        JLabel lblInfo = new JLabel("Menyiapkan transaksi...");
-        JDialog loadingDialog = createProgressDialog(progressBar, lblInfo);
-
-        btnSimpan.setEnabled(false);
-        loadingDialog.setVisible(true);
-
-        SwingWorker<Boolean, Integer> worker = new SwingWorker<>() {
-
-            @Override
-            protected Boolean doInBackground() throws Exception {
-                publish(10);
-                Thread.sleep(500);
-
-                publish(40);
-                Thread.sleep(500);
-
-                boolean result = controller.getService().simpanPesanan(p);
-
-                publish(80);
-                Thread.sleep(500);
-
-                return result;
-            }
-
-            @Override
-            protected void process(java.util.List<Integer> chunks) {
-                int val = chunks.get(chunks.size() - 1);
-                progressBar.setValue(val);
-                lblInfo.setText("Proses " + val + "%");
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    progressBar.setValue(100);
-                    lblInfo.setText("Selesai 100%");
-                    Thread.sleep(400);
-
-                    if (get()) {
-                        JOptionPane.showMessageDialog(PanelAddPesanan.this,
-                                "Transaksi berhasil disimpan!");
-                        resetForm();
-                        if (frameUtama != null) {
-                            frameUtama.gantiPanel("pesanan");
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(PanelAddPesanan.this,
-                                "Gagal menyimpan transaksi.");
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    JOptionPane.showMessageDialog(PanelAddPesanan.this,
-                            "Terjadi kesalahan saat menyimpan data.");
-                } finally {
-                    btnSimpan.setEnabled(true);
-                    loadingDialog.dispose();
-                }
-            }
-        };
-
-        worker.execute();
+    private void loadDataFromServer() {
+        // Panggil controller untuk mengisi combo via API
+        controller.isiComboPelanggan(cbPenyewa);
+        controller.isiComboKostum(cbKostum, "");
     }
 
-    public void loadPelangganCombo() {
-        cbPenyewa.removeAllItems();
-        cbPenyewa.addItem("-- Pilih Pelanggan --");
-        try (Connection c = DBConfig.getConnection();
-             Statement s = c.createStatement();
-             ResultSet r = s.executeQuery("SELECT nama_pelanggan FROM pelanggan")) {
-
-            while (r.next()) cbPenyewa.addItem(r.getString("nama_pelanggan"));
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void loadKostumCombo() {
-        cbKostum.removeAllItems();
-        cbKostum.addItem("-- Pilih Kostum --");
-        try (Connection c = DBConfig.getConnection();
-             Statement s = c.createStatement();
-             ResultSet r = s.executeQuery(
-                     "SELECT id_kostum,nama_kostum FROM kostum WHERE stok>0")) {
-
-            while (r.next()) {
-                cbKostum.addItem(r.getString(1) + " - " + r.getString(2));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void ambilHargaKostum() {
+    private void updateHargaOtomatis() {
         if (cbKostum.getSelectedIndex() <= 0) {
             hargaPerUnit = 0;
             hitungTotal();
             return;
         }
-
-        String id = cbKostum.getSelectedItem().toString().split(" - ")[0];
-        try (Connection c = DBConfig.getConnection();
-             PreparedStatement p =
-                     c.prepareStatement("SELECT harga_sewa FROM kostum WHERE id_kostum=?")) {
-
-            p.setString(1, id);
-            ResultSet r = p.executeQuery();
-            if (r.next()) hargaPerUnit = r.getDouble(1);
-            hitungTotal();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        
+        // Logika: Ambil harga dari string combo atau minta ke controller
+        // Misal format combo: "ID - Nama - Harga"
+        String selected = cbKostum.getSelectedItem().toString();
+        try {
+            String[] parts = selected.split(" - ");
+            if (parts.length >= 3) {
+                hargaPerUnit = Double.parseDouble(parts[2].replace("Rp", "").replace(".", "").trim());
+            }
+        } catch (Exception e) {
+            hargaPerUnit = 0;
         }
+        hitungTotal();
     }
 
     private void hitungTotal() {
         int j = (int) txtJumlah.getValue();
         txtTotal.setText(String.valueOf((int) (hargaPerUnit * j)));
+    }
+
+    private void aksiSimpan() {
+        // 1. Validasi Input
+        if (cbKostum.getSelectedIndex() <= 0 || cbPenyewa.getSelectedIndex() <= 0 || txtIDSewa.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Mohon lengkapi data!");
+            return;
+        }
+
+        // 2. Siapkan Objek Model
+        Pesanan p = new Pesanan();
+        p.setIdSewa(txtIDSewa.getText().trim());
+        p.setNamaPenyewa(cbPenyewa.getSelectedItem().toString());
+
+        String[] kostumData = cbKostum.getSelectedItem().toString().split(" - ");
+        p.setIdKostum(kostumData[0]);
+        p.setNamaKostum(kostumData[1]);
+
+        p.setJumlah((int) txtJumlah.getValue());
+        p.setTglPinjam(new Date());
+        p.setTotalBiaya(Double.parseDouble(txtTotal.getText()));
+        p.setStatus("Disewa");
+
+        // 3. Jalankan melalui Controller (3-Tier Way)
+        btnSimpan.setEnabled(false);
+        controller.simpanData(p, () -> {
+            // Callback setelah berhasil simpan
+            btnSimpan.setEnabled(true);
+            resetForm();
+            if (frameUtama != null) {
+                frameUtama.gantiPanel("pesanan"); // Pindah ke daftar transaksi
+            }
+        });
     }
 
     private void resetForm() {
@@ -219,26 +144,6 @@ public class PanelAddPesanan extends JPanel {
         txtJumlah.setValue(1);
         txtTotal.setText("");
         hargaPerUnit = 0;
-    }
-
-    private JDialog createProgressDialog(JProgressBar bar, JLabel label) {
-        JDialog d = new JDialog(
-                SwingUtilities.getWindowAncestor(this),
-                "Proses Penyimpanan",
-                Dialog.ModalityType.MODELESS
-        );
-        d.setResizable(true);
-        d.setLayout(new BorderLayout(10, 10));
-
-        JPanel p = new JPanel(new BorderLayout(10, 10));
-        p.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        p.add(label, BorderLayout.NORTH);
-        p.add(bar, BorderLayout.CENTER);
-
-        d.add(p);
-        d.setSize(350, 150);
-        d.setLocationRelativeTo(this);
-        return d;
     }
 
     private void refreshLayout() {
@@ -265,7 +170,6 @@ public class PanelAddPesanan extends JPanel {
             add(new JLabel("Total Biaya")); add(txtTotal, "wrap 30");
             add(btnSimpan, "span 2, center, w 250!, h 50!");
         }
-
         revalidate();
         repaint();
     }
