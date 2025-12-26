@@ -2,11 +2,11 @@ package worker.pesanan;
 
 import javax.swing.SwingWorker;
 import model.Pesanan;
-import api.PesananApiClient; // Pakai API Client
+import api.PesananApi; // Pakai API Client
 
 public class UpdatePesananWorker extends SwingWorker<Boolean, Void> {
     private Pesanan pesanan;
-    private PesananApiClient apiClient = new PesananApiClient();
+    private PesananApi apiClient = new PesananApi();
     private java.util.function.Consumer<Boolean> callback;
 
     public UpdatePesananWorker(Pesanan pesanan, java.util.function.Consumer<Boolean> callback) {

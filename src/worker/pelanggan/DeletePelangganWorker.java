@@ -1,35 +1,37 @@
 package worker.pelanggan;
 
-import java.sql.*;
+import api.PelangganApi;
 import javax.swing.*;
-import config.DBConfig;
+import java.util.function.Consumer;
 
 public class DeletePelangganWorker extends SwingWorker<Boolean, Void> {
-    private int id;
-    private Runnable onSuccess;
+    private String id; // Diubah ke String sesuai database (HD001)
+    private Consumer<Boolean> onResult; // Gunakan Consumer agar lebih fleksibel
 
-    public DeletePelangganWorker(int id, Runnable onSuccess) {
+    public DeletePelangganWorker(String id, Consumer<Boolean> onResult) {
         this.id = id;
-        this.onSuccess = onSuccess;
+        this.onResult = onResult;
     }
 
     @Override
     protected Boolean doInBackground() throws Exception {
-        Connection conn = DBConfig.getConnection();
-        PreparedStatement ps = conn.prepareStatement("DELETE FROM pelanggan WHERE id_pelanggan = ?");
-        ps.setInt(1, id);
-        return ps.executeUpdate() > 0;
+        // Panggil API, bukan JDBC/SQL!
+        PelangganApi api = new PelangganApi();
+        return api.delete(id);
     }
 
     @Override
     protected void done() {
         try {
-            if (get()) {
+            boolean sukses = get();
+            onResult.accept(sukses);
+            // Notifikasi (Optional: Bisa ditaruh di Controller agar Worker tetap bersih)
+            if (sukses) {
                 JOptionPane.showMessageDialog(null, "Data Berhasil Dihapus");
-                onSuccess.run();
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Gagal Hapus: " + e.getMessage());
+            onResult.accept(false);
         }
     }
 }

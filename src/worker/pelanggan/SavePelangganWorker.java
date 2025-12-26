@@ -1,40 +1,42 @@
 package worker.pelanggan;
 
-import java.sql.*;
+import api.PelangganApi;
+import model.Pelanggan;
 import javax.swing.*;
-import config.DBConfig;
+import java.util.function.Consumer;
 
+/**
+ * Worker untuk menyimpan data pelanggan melalui API (App-Tier).
+ */
 public class SavePelangganWorker extends SwingWorker<Boolean, Void> {
-    private String nama, wa, alamat;
-    private Runnable onSuccess;
+    private Pelanggan pelanggan;
+    private Consumer<Boolean> onResult;
 
-    public SavePelangganWorker(String nama, String wa, String alamat, Runnable onSuccess) {
-        this.nama = nama;
-        this.wa = wa;
-        this.alamat = alamat;
-        this.onSuccess = onSuccess;
+    // Sekarang kita terima Objek Pelanggan dan Consumer untuk callback
+    public SavePelangganWorker(Pelanggan p, Consumer<Boolean> onResult) {
+        this.pelanggan = p;
+        this.onResult = onResult;
     }
 
     @Override
     protected Boolean doInBackground() throws Exception {
-        Connection conn = DBConfig.getConnection();
-        String sql = "INSERT INTO pelanggan (nama_pelanggan, no_wa, alamat) VALUES (?, ?, ?)";
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setString(1, nama);
-        ps.setString(2, wa);
-        ps.setString(3, alamat);
-        return ps.executeUpdate() > 0;
+        // Panggil PelangganApi, biarkan API yang mengirim JSON ke PHP
+        PelangganApi api = new PelangganApi();
+        return api.save(pelanggan);
     }
 
     @Override
     protected void done() {
         try {
-            if (get()) {
+            boolean sukses = get();
+            onResult.accept(sukses);
+            
+            if (sukses) {
                 JOptionPane.showMessageDialog(null, "Data Berhasil Disimpan");
-                onSuccess.run();
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Gagal Simpan: " + e.getMessage());
+            onResult.accept(false);
         }
     }
 }

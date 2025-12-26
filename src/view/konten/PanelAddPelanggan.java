@@ -87,7 +87,7 @@ public class PanelAddPelanggan extends JPanel {
         controller.saveData(p, () -> {
             loading.dispose();
             btnSimpan.setEnabled(true);
-            JOptionPane.showMessageDialog(this, "Pelanggan Berhasil Ditambahkan!");
+            // JOptionPane.showMessageDialog(this, "Pelanggan Berhasil Ditambahkan!"); // Hapus ini jika di Controller sudah ada
             reset();
             frame.gantiPanel("pelanggan");
         });

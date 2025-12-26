@@ -2,12 +2,12 @@ package worker.pesanan;
 
 import javax.swing.SwingWorker;
 import model.Pesanan;
-import api.PesananApiClient; // Ganti ke API Client
+import api.PesananApi; // Ganti ke API Client
 
 public class SavePesananWorker extends SwingWorker<Boolean, Void> {
     private Pesanan pesanan;
     // Gunakan ApiClient sebagai pengganti Service
-    private PesananApiClient apiClient = new PesananApiClient();
+    private PesananApi apiClient = new PesananApi();
     private java.util.function.Consumer<Boolean> callback;
 
     public SavePesananWorker(Pesanan pesanan, java.util.function.Consumer<Boolean> callback) {

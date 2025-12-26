@@ -9,8 +9,8 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import model.Pesanan;
 
-public class PesananApiClient {
-    private static final String BASE_URL = "http://localhost/sewa-app-tier/public/index.php?menu=pesanan";
+public class PesananApi {
+    private static final String BASE_URL = "http://localhost/sewa-app-tier-copy/public/index.php?menu=pesanan";
     private final HttpClient client = HttpClient.newHttpClient();
     private final Gson gson = new Gson();
 

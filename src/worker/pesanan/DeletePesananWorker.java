@@ -1,12 +1,12 @@
 package worker.pesanan;
 
 import javax.swing.SwingWorker;
-import api.PesananApiClient; // Pakai API Client, bukan Service
+import api.PesananApi; // Pakai API Client, bukan Service
 
 public class DeletePesananWorker extends SwingWorker<Boolean, Void> {
     private String id; 
     // Ganti Service menjadi ApiClient
-    private PesananApiClient apiClient = new PesananApiClient();
+    private PesananApi apiClient = new PesananApi();
     private java.util.function.Consumer<Boolean> callback;
 
     public DeletePesananWorker(String id, java.util.function.Consumer<Boolean> callback) {

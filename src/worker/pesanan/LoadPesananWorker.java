@@ -3,11 +3,11 @@ package worker.pesanan;
 import javax.swing.*;
 import java.util.List;
 import model.Pesanan;
-import api.PesananApiClient; // Pakai API Client baru
+import api.PesananApi; // Pakai API Client baru
 
 public class LoadPesananWorker extends SwingWorker<List<Pesanan>, Void> {
     // Ganti Service dengan ApiClient
-    private PesananApiClient apiClient = new PesananApiClient();
+    private PesananApi apiClient = new PesananApi();
     private String keyword;
     private java.util.function.Consumer<List<Pesanan>> callback;
 

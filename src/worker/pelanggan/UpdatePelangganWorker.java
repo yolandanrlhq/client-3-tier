@@ -1,43 +1,41 @@
 package worker.pelanggan;
 
-import java.sql.*;
+import api.PelangganApi;
+import model.Pelanggan;
 import javax.swing.*;
-import config.DBConfig;
+import java.util.function.Consumer;
 
 public class UpdatePelangganWorker extends SwingWorker<Boolean, Void> {
-    private int id;
-    private String nama, wa, alamat;
-    private Runnable onSuccess;
+    private Pelanggan pelanggan;
+    private Consumer<Boolean> onResult;
 
-    public UpdatePelangganWorker(int id, String nama, String wa, String alamat, Runnable onSuccess) {
-        this.id = id;
-        this.nama = nama;
-        this.wa = wa;
-        this.alamat = alamat;
-        this.onSuccess = onSuccess;
+    // Menggunakan objek Pelanggan agar konsisten dengan SaveWorker
+    public UpdatePelangganWorker(Pelanggan p, Consumer<Boolean> onResult) {
+        this.pelanggan = p;
+        this.onResult = onResult;
     }
 
     @Override
     protected Boolean doInBackground() throws Exception {
-        Connection conn = DBConfig.getConnection();
-        String sql = "UPDATE pelanggan SET nama_pelanggan=?, no_wa=?, alamat=? WHERE id_pelanggan=?";
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setString(1, nama);
-        ps.setString(2, wa);
-        ps.setString(3, alamat);
-        ps.setInt(4, id);
-        return ps.executeUpdate() > 0;
+        // Menggunakan PelangganApi untuk melakukan POST/PUT ke server
+        PelangganApi api = new PelangganApi();
+        return api.save(pelanggan); 
+        // Catatan: Karena PHP kita pakai ON DUPLICATE KEY UPDATE, 
+        // memanggil api.save() dengan ID yang sudah ada otomatis akan meng-update.
     }
 
     @Override
     protected void done() {
         try {
-            if (get()) {
+            boolean sukses = get();
+            onResult.accept(sukses);
+            
+            if (sukses) {
                 JOptionPane.showMessageDialog(null, "Data Berhasil Diperbarui");
-                onSuccess.run();
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Gagal Update: " + e.getMessage());
+            onResult.accept(false);
         }
     }
 }

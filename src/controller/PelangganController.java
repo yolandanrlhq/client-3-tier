@@ -1,34 +1,36 @@
 package controller;
 
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
 import model.Pelanggan;
 import view.konten.PanelPelanggan;
-import worker.pelanggan.*; // Pastikan semua worker sudah dibuat di package ini
+import worker.pelanggan.*; 
+import java.util.List;
 
 /**
  * PelangganController (Client-Tier)
- * Menghubungkan View dengan Business Logic di PHP melalui Worker.
+ * Bertanggung jawab menjembatani UI Java dengan API PHP via Worker.
  */
 public class PelangganController {
     private PanelPelanggan view;
 
-    /**
-     * Constructor: PelangganService dihapus karena logika SQL pindah ke PHP.
-     */
     public PelangganController(PanelPelanggan view) {
         this.view = view;
     }
 
     /**
-     * Menampilkan data ke tabel dengan mengambil data dari API PHP.
+     * Memuat data dari server dan memperbarui tabel di View.
      */
     public void displayData() {
-        // Menggunakan LoadPelangganWorker untuk mengambil data JSON dari PHP
         new LoadPelangganWorker(list -> {
-            if (view != null) {
-                view.getModel().setRowCount(0);
-                if (list != null) {
+            // Cek apakah view dan model tabel tersedia
+            if (view != null && view.getModel() != null) {
+                DefaultTableModel model = view.getModel();
+                model.setRowCount(0); // Bersihkan tabel
+                
+                if (list != null && !list.isEmpty()) {
                     for (Pelanggan p : list) {
-                        view.getModel().addRow(new Object[]{
+                        model.addRow(new Object[]{
                             p.getId(), 
                             p.getNama(), 
                             p.getNoWa(), 
@@ -42,40 +44,54 @@ public class PelangganController {
     }
 
     /**
-     * Mengirim data pelanggan baru ke API PHP.
+     * Menyimpan data pelanggan baru.
+     * @param callback dijalankan setelah operasi sukses (misal: tutup dialog)
      */
     public void saveData(Pelanggan p, Runnable callback) {
-        // Menggunakan SavePelangganWorker (menggantikan Thread manual)
         new SavePelangganWorker(p, sukses -> {
             if (sukses) {
-                displayData(); // Refresh tabel setelah simpan
+                JOptionPane.showMessageDialog(null, "Pelanggan berhasil disimpan!");
+                displayData(); // Refresh data di tabel utama
                 if (callback != null) callback.run();
+            } else {
+                JOptionPane.showMessageDialog(null, "Gagal menyimpan data pelanggan.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }).execute();
     }
 
     /**
-     * Memperbarui data pelanggan melalui API PHP.
+     * Memperbarui data pelanggan yang sudah ada.
      */
     public void updateData(Pelanggan p, Runnable callback) {
-        // Menggunakan UpdatePelangganWorker
         new UpdatePelangganWorker(p, sukses -> {
             if (sukses) {
-                displayData(); // Refresh tabel
+                JOptionPane.showMessageDialog(null, "Data pelanggan diperbarui!");
+                displayData(); 
                 if (callback != null) callback.run();
+            } else {
+                JOptionPane.showMessageDialog(null, "Gagal memperbarui data.");
             }
         }).execute();
     }
 
     /**
-     * Menghapus data pelanggan berdasarkan ID melalui API PHP.
+     * Menghapus pelanggan berdasarkan ID.
      */
     public void deleteData(String id) {
-        // Menggunakan DeletePelangganWorker
-        new DeletePelangganWorker(id, sukses -> {
-            if (sukses) {
-                displayData(); // Refresh tabel setelah hapus
-            }
-        }).execute();
+        int confirm = JOptionPane.showConfirmDialog(view, 
+            "Apakah Anda yakin ingin menghapus pelanggan ID: " + id + "?", 
+            "Konfirmasi Hapus", 
+            JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            new DeletePelangganWorker(id, sukses -> {
+                if (sukses) {
+                    JOptionPane.showMessageDialog(view, "Pelanggan berhasil dihapus.");
+                    displayData(); 
+                } else {
+                    JOptionPane.showMessageDialog(view, "Gagal menghapus pelanggan.");
+                }
+            }).execute();
+        }
     }
 }

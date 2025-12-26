@@ -2,40 +2,43 @@ package worker;
 
 import javax.swing.SwingWorker;
 import model.Kostum;
-import service.KostumService;
+import api.ProdukApi; // Ganti Service dengan API
+import java.util.function.Consumer;
 
-public class AddProdukWorker extends SwingWorker<Void, Integer> {
+public class AddProdukWorker extends SwingWorker<Boolean, Integer> {
 
-    private final KostumService service;
+    private final ProdukApi api; // Gunakan API
     private final Kostum kostum;
-    private final Runnable onSuccess;
+    private final Consumer<Boolean> onResult; // Gunakan Consumer agar tahu sukses/gagal
 
-    // ✅ CONSTRUCTOR BARU (dengan callback)
-    public AddProdukWorker(KostumService service, Kostum kostum, Runnable onSuccess) {
-        this.service = service;
+    public AddProdukWorker(Kostum kostum, Consumer<Boolean> onResult) {
+        this.api = new ProdukApi();
         this.kostum = kostum;
-        this.onSuccess = onSuccess;
-    }
-
-    // ✅ CONSTRUCTOR LAMA (AGAR TIDAK ERROR)
-    public AddProdukWorker(KostumService service, Kostum kostum) {
-        this(service, kostum, null);
+        this.onResult = onResult;
     }
 
     @Override
-    protected Void doInBackground() throws Exception {
-        for (int i = 0; i <= 100; i += 5) {
-            Thread.sleep(250);
+    protected Boolean doInBackground() throws Exception {
+        // Simulasi progress bar (opsional)
+        for (int i = 0; i <= 100; i += 20) {
+            Thread.sleep(100); 
             setProgress(i);
         }
-        service.simpan(kostum);
-        return null;
+        
+        // Panggil API untuk simpan ke PHP
+        return api.save(kostum);
     }
 
     @Override
     protected void done() {
-        if (onSuccess != null) {
-            onSuccess.run();
+        try {
+            boolean sukses = get();
+            if (onResult != null) {
+                onResult.accept(sukses);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (onResult != null) onResult.accept(false);
         }
     }
 }

@@ -220,7 +220,11 @@ public class FrameUtama extends JFrame {
         switch (key) {
             case "dashboard" -> pDashboard.refreshData(); // Pastikan Dashboard juga pakai Worker nanti
             case "produk"    -> pProduk.refresh();
-            case "pesanan"   -> pPesanan.loadData("");
+            case "pesanan"   -> {
+                // Panggil getController().muatData agar data muncul DIAM-DIAM
+                // JANGAN panggil pPesanan.searchWithLoading("");
+                pPesanan.getController().muatData(""); 
+            }
             
             // Panggil method muat data yang sudah kita buat di PanelAddPesanan tadi
             case "add_pesanan" -> {
