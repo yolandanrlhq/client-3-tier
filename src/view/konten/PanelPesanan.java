@@ -3,11 +3,20 @@ package view.konten;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
+import java.util.Map;
+
 import javax.swing.*;
 import javax.swing.table.*;
 import net.miginfocom.swing.MigLayout;
 import model.Pesanan;
 import controller.PesananController;
+import config.DbConnection;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.io.InputStream;
+import java.util.HashMap;
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.view.JasperViewer;
 
 public class PanelPesanan extends JPanel {
 
@@ -58,9 +67,13 @@ public class PanelPesanan extends JPanel {
             searchWithLoading("");
         });
 
+        JButton btnCetak = new JButton("Ekspor"); 
+        btnCetak.addActionListener(e -> cetakLaporan()); 
+
         toolbar.add(txtSearch, "grow");
         toolbar.add(btnSearch, "w 90!");
         toolbar.add(btnRefresh, "w 120!");
+        toolbar.add(btnCetak, "w 100!"); // Tambahkan ke toolbar, bukan btnPanel
         add(toolbar, "growx, wrap");
 
         // ===== TABLE (Gaya Produk) =====
@@ -299,4 +312,64 @@ public class PanelPesanan extends JPanel {
     public PesananController getController() {
         return this.controller;
     }
+
+    private void cetakLaporan() {
+    try (Connection conn = DbConnection.getConnection()) {
+
+        if (conn == null) {
+            JOptionPane.showMessageDialog(this, "Koneksi ke database gagal!");
+            return;
+        }
+
+        // ===============================
+        // LOAD JRXML DARI RESOURCES
+        // ===============================
+        InputStream jrxmlStream = getClass()
+                .getResourceAsStream("/reports/report_pesanan.jrxml");
+
+        if (jrxmlStream == null) {
+            throw new RuntimeException(
+                "File report_pesanan.jrxml tidak ditemukan di folder resources!"
+            );
+        }
+
+        // ===============================
+        // COMPILE REPORT (ANTI wrong name)
+        // ===============================
+        JasperReport jasperReport =
+                JasperCompileManager.compileReport(jrxmlStream);
+
+        // ===============================
+        // ISI DATA REPORT
+        // ===============================
+        Map<String, Object> params = new HashMap<>();
+        JasperPrint jasperPrint =
+                JasperFillManager.fillReport(jasperReport, params, conn);
+
+        // ===============================
+        // TAMPILKAN
+        // ===============================
+        JasperViewer viewer = new JasperViewer(jasperPrint, false);
+        viewer.setTitle("Laporan Transaksi Sewa Kostum");
+        viewer.setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
+        viewer.setVisible(true);
+
+    } catch (JRException | SQLException ex) {
+        ex.printStackTrace();
+
+        String msg = ex.getMessage();
+        if (msg != null && msg.contains("wrong name")) {
+            msg = "Nama report tidak valid. Pastikan TIDAK memakai tanda '-' "
+                + "dan file .jasper lama sudah dihapus.";
+        }
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Gagal mencetak laporan:\n" + msg,
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
+}
+
 }

@@ -2,12 +2,17 @@ package controller;
 
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+
+import config.DbConnection;
 import model.Pesanan;
 import model.Kostum;
 import view.konten.PanelPesanan;
 import worker.pesanan.*; 
 import worker.ProdukLoadWorker; // Pastikan path package benar
-import worker.pelanggan.LoadPelangganWorker; 
+import worker.pelanggan.LoadPelangganWorker;
+
+import config.DbConnection;
+import java.sql.Connection;
 import java.util.List;
 
 public class PesananController {
@@ -96,5 +101,10 @@ public class PesananController {
                 JOptionPane.showMessageDialog(null, "Gagal simpan data.");
             }
         }).execute();
+    }
+
+    public void cetakStruk(String id) {
+        Connection conn = DbConnection.getConnection();
+        // Lanjutkan proses JasperReport...
     }
 }
