@@ -1,51 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5-74d586df47b25dbd05bd0957999819196e59934a  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="report-pesanan" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="48550396-2937-49ce-bce8-5ea3a63f38f0">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+	name="report-pesanan"
+	pageWidth="595"
+	pageHeight="842"
+	columnWidth="535"
+	leftMargin="20"
+	rightMargin="20"
+	topMargin="20"
+	bottomMargin="20"
+	uuid="48550396-2937-49ce-bce8-5ea3a63f38f0">
+
+	<!-- ================= PROPERTY ASLI (TIDAK DIHAPUS) ================= -->
 	<property name="com.jaspersoft.studio.data.sql.tables">
 		<![CDATA[ZGJfa29zdHVtLnBlc2FuYW4gQVMgLDU3LDEzLDcxNTM4NjAyLTU0MDEtNGYxNy04YjI0LTk1YmRi
 YzM1ZmQ5ODs=]]>
 	</property>
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="Database apk-sewa"/>
+
+	<!-- ================= PARAMETER TAMBAHAN ================= -->
+	<parameter name="judulLaporan" class="java.lang.String"/>
+<parameter name="reportType" class="java.lang.String"/>
+<parameter name="startDate" class="java.util.Date"/>
+<parameter name="endDate" class="java.util.Date"/>
+<parameter name="bulan" class="java.lang.Integer"/>
+<parameter name="tahun" class="java.lang.Integer"/>
+<parameter name="statusPesanan" class="java.lang.String"/>
+<parameter name="namaKostum" class="java.lang.String"/>
+
+	<!-- ================= QUERY (DITAMBAH WHERE, BUKAN DIGANTI) ================= -->
 	<queryString language="SQL">
-		<![CDATA[SELECT id_sewa,
-	nama_penyewa,
-	nama_kostum,
-	jumlah,
-	tgl_pinjam,
-	total_biaya,
-	status
-FROM db_kostum.pesanan]]>
-	</queryString>
+<![CDATA[
+SELECT 
+    id_sewa,
+    nama_penyewa,
+    nama_kostum,
+    jumlah,
+    tgl_pinjam,
+    total_biaya,
+    status
+FROM db_kostum.pesanan
+WHERE
+(
+    ($P{reportType} = 'HARIAN'
+        AND DATE(tgl_pinjam) = DATE($P{startDate}))
+
+    OR ($P{reportType} = 'BULANAN'
+        AND MONTH(tgl_pinjam) = $P{bulan}
+        AND YEAR(tgl_pinjam) = $P{tahun})
+
+    OR ($P{reportType} = 'TAHUNAN'
+        AND YEAR(tgl_pinjam) = $P{tahun})
+
+    OR ($P{reportType} = 'STATUS'
+        AND status = $P{statusPesanan})
+
+    OR ($P{reportType} = 'PRODUK'
+        AND nama_kostum = $P{namaKostum})
+)
+ORDER BY tgl_pinjam DESC
+]]>
+</queryString>
+
+
+	<!-- ================= FIELD ASLI (TIDAK DIUBAH) ================= -->
 	<field name="id_sewa" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="id_sewa"/>
 		<property name="com.jaspersoft.studio.field.label" value="id_sewa"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="pesanan"/>
 	</field>
+
 	<field name="nama_penyewa" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="nama_penyewa"/>
 		<property name="com.jaspersoft.studio.field.label" value="nama_penyewa"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="pesanan"/>
 	</field>
+
 	<field name="nama_kostum" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="nama_kostum"/>
 		<property name="com.jaspersoft.studio.field.label" value="nama_kostum"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="pesanan"/>
 	</field>
+
 	<field name="jumlah" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="jumlah"/>
 		<property name="com.jaspersoft.studio.field.label" value="jumlah"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="pesanan"/>
 	</field>
+
 	<field name="tgl_pinjam" class="java.sql.Date">
 		<property name="com.jaspersoft.studio.field.name" value="tgl_pinjam"/>
 		<property name="com.jaspersoft.studio.field.label" value="tgl_pinjam"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="pesanan"/>
 	</field>
+
 	<field name="total_biaya" class="java.lang.Double">
 		<property name="com.jaspersoft.studio.field.name" value="total_biaya"/>
 		<property name="com.jaspersoft.studio.field.label" value="total_biaya"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="pesanan"/>
 	</field>
+
 	<field name="status" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="status"/>
 		<property name="com.jaspersoft.studio.field.label" value="status"/>

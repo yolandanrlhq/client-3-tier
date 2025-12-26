@@ -322,7 +322,30 @@ public class PanelPesanan extends JPanel {
         }
 
         // ===============================
-        // LOAD JRXML DARI RESOURCES
+        // PILIH JENIS LAPORAN
+        // ===============================
+        String[] options = {
+            "Pesanan Harian",
+            "Pesanan Bulanan",
+            "Pesanan Tahunan",
+            "Pesanan Berdasarkan Status",
+            "Pesanan Berdasarkan Produk"
+        };
+
+        String pilihan = (String) JOptionPane.showInputDialog(
+                this,
+                "Pilih jenis laporan:",
+                "Cetak Laporan",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
+
+        if (pilihan == null) return;
+
+        // ===============================
+        // LOAD JRXML
         // ===============================
         InputStream jrxmlStream = getClass()
                 .getResourceAsStream("/reports/report_pesanan.jrxml");
@@ -333,39 +356,87 @@ public class PanelPesanan extends JPanel {
             );
         }
 
-        // ===============================
-        // COMPILE REPORT (ANTI wrong name)
-        // ===============================
         JasperReport jasperReport =
                 JasperCompileManager.compileReport(jrxmlStream);
 
         // ===============================
-        // ISI DATA REPORT
+        // PARAMETER
         // ===============================
         Map<String, Object> params = new HashMap<>();
+
+        switch (pilihan) {
+
+            case "Pesanan Harian": {
+                params.put("reportType", "HARIAN");
+                params.put("judulLaporan", "Laporan Pesanan Harian");
+
+                java.sql.Date today = new java.sql.Date(System.currentTimeMillis());
+                params.put("startDate", today);
+                params.put("endDate", today);
+                break;
+            }
+
+            case "Pesanan Bulanan": {
+                String bulan = JOptionPane.showInputDialog(this, "Masukkan bulan (1-12):");
+                String tahun = JOptionPane.showInputDialog(this, "Masukkan tahun:");
+
+                params.put("reportType", "BULANAN");
+                params.put("judulLaporan", "Laporan Pesanan Bulanan");
+                params.put("bulan", Integer.parseInt(bulan));
+                params.put("tahun", Integer.parseInt(tahun));
+                break;
+            }
+
+            case "Pesanan Tahunan": {
+                String tahun = JOptionPane.showInputDialog(this, "Masukkan tahun:");
+
+                params.put("reportType", "TAHUNAN");
+                params.put("judulLaporan", "Laporan Pesanan Tahunan");
+                params.put("tahun", Integer.parseInt(tahun));
+                break;
+            }
+
+            case "Pesanan Berdasarkan Status": {
+                String status = JOptionPane.showInputDialog(
+                        this,
+                        "Masukkan status (Disewa / Selesai / Dibatalkan):"
+                );
+
+                params.put("reportType", "STATUS");
+                params.put("judulLaporan", "Laporan Pesanan Berdasarkan Status");
+                params.put("statusPesanan", status);
+                break;
+            }
+
+            case "Pesanan Berdasarkan Produk": {
+                String kostum = JOptionPane.showInputDialog(
+                        this,
+                        "Masukkan nama kostum:"
+                );
+
+                params.put("reportType", "PRODUK");
+                params.put("judulLaporan", "Laporan Pesanan Berdasarkan Produk");
+                params.put("namaKostum", kostum);
+                break;
+            }
+        }
+
+        // ===============================
+        // FILL & VIEW
+        // ===============================
         JasperPrint jasperPrint =
                 JasperFillManager.fillReport(jasperReport, params, conn);
 
-        // ===============================
-        // TAMPILKAN
-        // ===============================
         JasperViewer viewer = new JasperViewer(jasperPrint, false);
         viewer.setTitle("Laporan Transaksi Sewa Kostum");
-        viewer.setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
+        viewer.setExtendedState(JFrame.MAXIMIZED_BOTH);
         viewer.setVisible(true);
 
-    } catch (JRException | SQLException ex) {
+    } catch (Exception ex) {
         ex.printStackTrace();
-
-        String msg = ex.getMessage();
-        if (msg != null && msg.contains("wrong name")) {
-            msg = "Nama report tidak valid. Pastikan TIDAK memakai tanda '-' "
-                + "dan file .jasper lama sudah dihapus.";
-        }
-
         JOptionPane.showMessageDialog(
                 this,
-                "Gagal mencetak laporan:\n" + msg,
+                "Gagal mencetak laporan:\n" + ex.getMessage(),
                 "Error",
                 JOptionPane.ERROR_MESSAGE
         );
