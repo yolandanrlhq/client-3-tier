@@ -9,34 +9,46 @@ import com.google.gson.reflect.TypeToken;
 import model.DashboardModel;
 
 public class DashboardApi {
-    private static final String BASE_URL = "http://localhost/penyewaan_kostum/public/index.php?menu=dashboard";
+    private static final String BASE_URL = "http://localhost/sewa-app-tier/public/index.php?menu=dashboard";
     private final HttpClient client = HttpClient.newHttpClient();
     private final Gson gson = new Gson();
 
     public DashboardModel getStatistics() throws Exception {
-        // 1. Bangun Request (GET)
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL))
                 .GET()
                 .build();
 
-        // 2. Kirim dan terima response dalam bentuk String
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        // 3. Parsing menggunakan ApiResponse gaya dosenmu
-        // Karena DashboardModel itu objek tunggal, kita sesuaikan Type-nya
-        ApiResponse<DashboardModel> apiResp = gson.fromJson(response.body(),
-                new TypeToken<ApiResponse<DashboardModel>>() {}.getType());
+        // FIX UTAMA: Gunakan .trim() untuk membuang karakter sampah/spasi dari PHP
+        String rawJson = response.body().trim();
+        
+        // Debug: Aktifkan ini jika masih error untuk melihat apa yang sebenarnya dikirim PHP
+        // System.out.println("RAW JSON: " + rawJson);
 
-        // 4. Cek sukses atau tidak dari JSON-nya
-        if (!apiResp.success) {
-            throw new Exception(apiResp.message);
+        try {
+            // Parsing menggunakan ApiResponse
+            ApiResponse<DashboardModel> apiResp = gson.fromJson(rawJson,
+                    new TypeToken<ApiResponse<DashboardModel>>() {}.getType());
+
+            if (apiResp == null) {
+                throw new Exception("Server mengembalikan response kosong.");
+            }
+
+            if (!apiResp.success) {
+                throw new Exception(apiResp.message != null ? apiResp.message : "Gagal mengambil data");
+            }
+
+            return apiResp.data;
+            
+        } catch (Exception e) {
+            // Jika parsing gagal, kemungkinan besar PHP mengirimkan Error Teks (bukan JSON)
+            throw new Exception("Gagal membaca data dari server. Pastikan backend tidak error.");
         }
-
-        return apiResp.data;
     }
 
-    // Inner class untuk membungkus format JSON dari PHP
+    // Pastikan field di inner class ini sesuai dengan key di JSON PHP
     private static class ApiResponse<T> {
         boolean success;
         T data;
